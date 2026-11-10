@@ -41,7 +41,10 @@ class Fake(BaseHTTPRequestHandler):
                           key=lambda m: int(m["id"]))[:100]
             return self.reply(200, list(reversed(page)))  # Discord returns newest first
         if path.endswith(f"/messages/{POST}"):
-            return self.reply(200, msg(POST, "webhook", "design"))
+            post = msg(POST, "webhook", "design")
+            post["reactions"] = [{"emoji": {"name": e}, "count": len(u)}
+                                 for e, u in sc.get("reactions", {}).items() if u]
+            return self.reply(200, post)
         return self.reply(404, {"message": "Unknown Message"})
 
     def reply(self, code, body):
@@ -114,6 +117,18 @@ class WaitApprovalTest(unittest.TestCase):
         code, out = self.run_waiter({"reactions": {"👍": [BOSS]}, "messages": many})
         self.assertEqual(code, 0)
         self.assertEqual(len(out["discussion"]), 150)
+
+    def test_similar_emoji_decide(self):
+        for emoji, expected in [("🔄", (5, "revise")), ("🔃", (5, "revise")),
+                                ("✅", (0, "approved")), ("👍🏽", (0, "approved")),
+                                ("❌", (1, "rejected")), ("👎🏻", (1, "rejected"))]:
+            with self.subTest(emoji=emoji):
+                code, out = self.run_waiter({"reactions": {emoji: [BOSS]}})
+                self.assertEqual((code, out["status"]), expected)
+
+    def test_similar_emoji_from_non_approvers_never_decide(self):
+        code, out = self.run_waiter({"reactions": {"🔄": [OTHER], "✅": [OTHER]}}, timeout="2s")
+        self.assertEqual((code, out["status"]), (3, "timeout"))
 
     def test_errors_fail_fast(self):
         code, out = self.run_waiter({}, message="999")

@@ -11,6 +11,8 @@ Approvers react on the message; replies are discussion, never a decision:
   (no decision) exit 3  {"status": "timeout",  "discussion": [...]}
   (failure)     exit 4  {"status": "error",    "error": "..."}
 
+Look-alikes count: ✅ and skin-toned 👍 approve, ❌ and skin-toned 👎 reject, 🔄 and 🔃 revise.
+
 "discussion" is every message that replies to the posted message, directly or through
 a chain of replies, from anyone, oldest first:
   {"id", "author_id", "author", "text", "reply_to"}
@@ -33,8 +35,13 @@ import urllib.request
 
 API = os.environ.get("DISCORD_API", "https://discord.com/api/v10")
 CONF = os.path.expanduser("~/.config/discord-post")
-# Checked in this order: the first decision found wins.
-DECISIONS = [("👎", "rejected", 1), ("🔁", "revise", 5), ("👍", "approved", 0)]
+TONES = ["", "\U0001F3FB", "\U0001F3FC", "\U0001F3FD", "\U0001F3FE", "\U0001F3FF"]
+# Checked in this order: the first decision found wins. Look-alike emoji count too.
+DECISIONS = [
+    ([f"👎{t}" for t in TONES] + ["❌"], "rejected", 1),
+    (["🔁", "🔄", "🔃"], "revise", 5),
+    ([f"👍{t}" for t in TONES] + ["✅"], "approved", 0),
+]
 
 
 def done(code: int, **out) -> None:
@@ -140,8 +147,12 @@ def main() -> None:
 
     deadline = time.monotonic() + args.timeout
     while True:
-        for emoji, status, code in DECISIONS:
-            deciders = sorted(reactors(args.channel, args.message, emoji, token) & approvers)
+        # One read shows which emoji are on the post; only those are looked up.
+        post = get(f"/channels/{args.channel}/messages/{args.message}", token)
+        present = {(r.get("emoji") or {}).get("name") for r in post.get("reactions") or []}
+        for emojis, status, code in DECISIONS:
+            deciders = sorted(set().union(*(reactors(args.channel, args.message, e, token)
+                                            for e in emojis if e in present)) & approvers)
             if deciders:
                 done(code, status=status, by=deciders[0],
                      discussion=discussion(args.channel, args.message, token))
