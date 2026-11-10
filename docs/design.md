@@ -14,7 +14,8 @@ worktrees and opens pull requests, which the developer reviews and merges.
 - **Posting**: Discord webhook. Webhooks cannot reply, so later posts link back (`--link-to`).
 - **Reading**: a read-only bot (View Channels + Read Message History, Message Content intent). A
   webhook can't read.
-- **Decision**: approver reactions only. Replies are discussion, collected through reply chains. The
+- **Decision**: approver reactions only. Replies are discussion: every message in the design's thread, or reply chains
+  in a text channel. The
   approver ends the discussion with 🔁; a first reply or a quiet period doesn't. 👎 > 🔁 > 👍.
 - **Multi-repo**: the spec lists its repositories and merge order; one worktree and one PR per repo,
   with sibling PRs cross-linked.
@@ -24,7 +25,10 @@ worktrees and opens pull requests, which the developer reviews and merges.
 - **Authority**: a 👍 covers implementing, pushing feature branches and opening PRs. Never merge,
   base-branch pushes, deletion or publishing.
 - **Failure**: no PR for a repo whose gates fail; partial results are reported as partial.
+- **Threads**: one forum post per design (webhook `thread_name`), holding its revisions, discussion
+  and report; a text channel falls back to `--link-to`. See
+  `docs/specs/2026-11-10-forum-threads-and-readable-posts.md`.
 
 ## Not now
-Threads (webhooks can only create them in forum channels), auto-addressing PR review comments,
+Auto-addressing PR review comments,
 publishing to the omp skill registry.

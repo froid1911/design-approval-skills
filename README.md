@@ -50,8 +50,9 @@ Requirements: `python3` (stdlib only), `git`, `gh` (logged in), `jq`.
 
 Secrets live in `~/.config/discord-post/` (mode 600). Never put them in a repo or paste them into a chat.
 
-1. **Webhook** (to post): channel settings → Integrations → Webhooks → New → copy the URL into
-   `~/.config/discord-post/webhook`.
+1. **Webhook** (to post): create a **Forum** channel (each design becomes one forum post with its
+   revisions, discussion and PR report inside; a text channel also works, without threads). Channel
+   settings → Integrations → Webhooks → New → copy the URL into `~/.config/discord-post/webhook`.
 2. **Bot** (to read reactions and replies): create an application at
    discord.com/developers/applications → Bot → Reset Token, and enable **Message Content Intent**.
    Invite it with only **View Channels + Read Message History**:
