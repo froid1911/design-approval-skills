@@ -98,9 +98,8 @@ chains) count.
 ## Troubleshooting
 
 - `discord answered 401/404` on post: webhook deleted or rotated — ask for a new URL.
-- `error` from the waiter with 403: the bot cannot view the channel — fix its channel permissions.
 - Empty `text` in discussion: Message Content Intent is off.
-- `HTTP 403` / `Missing Access` (code 50001) on a forum or its posts: the forum is private or its
-  permissions exclude the bot. Channel settings → Permissions → add the bot with View Channel and
+- `error` from the waiter with 403 / `Missing Access` (code 50001): the bot cannot view the channel,
+  e.g. a private forum. Channel settings → Permissions → add the bot with View Channel and
   Read Message History. The forum appearing in the server's channel list does not mean the bot can
   read it.
