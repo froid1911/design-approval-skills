@@ -50,7 +50,8 @@ python3 <skill-dir>/wait_approval.py --channel "$(jq -r .channel_id <<<"$ids")" 
 
 Run the wait in the background where the host allows it (Claude Code: Bash `run_in_background`;
 omp/Codex/Hermes: their background or task tool; otherwise in the foreground). It polls every 20 s
-and prints one JSON line:
+and prints one JSON line. Hosts may label any non-zero exit as "failed"; read the `status`, since
+exits 1, 3, 5 and 6 are normal outcomes:
 
 | exit | status | meaning |
 |---|---|---|
@@ -97,5 +98,8 @@ chains) count.
 ## Troubleshooting
 
 - `discord answered 401/404` on post: webhook deleted or rotated — ask for a new URL.
-- `error` from the waiter with 403: the bot cannot view the channel — fix its channel permissions.
 - Empty `text` in discussion: Message Content Intent is off.
+- `error` from the waiter with 403 / `Missing Access` (code 50001): the bot cannot view the channel,
+  e.g. a private forum. Channel settings → Permissions → add the bot with View Channel and
+  Read Message History. The forum appearing in the server's channel list does not mean the bot can
+  read it.
