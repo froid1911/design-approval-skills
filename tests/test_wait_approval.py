@@ -13,10 +13,12 @@ WAITER = os.path.join(ROOT, "skills", "discord-post", "wait_approval.py")
 BOSS, OTHER, POST = "100", "200", "1000"
 
 
-def msg(mid: str, author: str, text: str, reply_to: str | None = None) -> dict:
+def msg(mid: str, author: str, text: str, reply_to: str | None = None, webhook: bool = False) -> dict:
     m = {"id": mid, "author": {"id": author, "username": f"u{author}"}, "content": text}
     if reply_to:
         m["message_reference"] = {"message_id": reply_to}
+    if webhook:
+        m["webhook_id"] = author
     return m
 
 
@@ -40,6 +42,8 @@ class Fake(BaseHTTPRequestHandler):
             page = sorted((m for m in sc.get("messages", []) if int(m["id"]) > after),
                           key=lambda m: int(m["id"]))[:100]
             return self.reply(200, list(reversed(page)))  # Discord returns newest first
+        if path.endswith("/channels/5"):
+            return self.reply(200, {"id": "5", "type": sc.get("channel_type", 0)})
         if path.endswith(f"/messages/{POST}"):
             post = msg(POST, "webhook", "design")
             post["reactions"] = [{"emoji": {"name": e}, "count": len(u)}
@@ -153,6 +157,33 @@ class WaitApprovalTest(unittest.TestCase):
             "messages": [msg("1001", OTHER, "nit", reply_to=POST)],
         }, extra=["--return-on-reply"])
         self.assertEqual((code, out["status"]), (0, "approved"))
+
+    def test_thread_counts_every_message_but_the_webhooks(self):
+        code, out = self.run_waiter({
+            "channel_type": 11,
+            "reactions": {"👍": [BOSS]},
+            "messages": [
+                msg("1001", OTHER, "plain message, not a reply"),
+                msg("1002", "hook", "✅ PRs ready", webhook=True),
+                msg("1003", BOSS, "replying to it", reply_to="1001"),
+            ],
+        })
+        self.assertEqual((code, out["status"]), (0, "approved"))
+        self.assertEqual([m["id"] for m in out["discussion"]], ["1001", "1003"])
+
+    def test_thread_message_wakes_return_on_reply(self):
+        code, out = self.run_waiter({
+            "channel_type": 11,
+            "messages": [msg("1001", OTHER, "what about tags?")],
+        }, extra=["--return-on-reply"])
+        self.assertEqual((code, out["status"]), (6, "reply"))
+
+    def test_text_channel_ignores_non_replies(self):
+        code, out = self.run_waiter({
+            "reactions": {"👍": [BOSS]},
+            "messages": [msg("1001", OTHER, "plain message, not a reply")],
+        })
+        self.assertEqual(out["discussion"], [])
 
     def test_errors_fail_fast(self):
         code, out = self.run_waiter({}, message="999")

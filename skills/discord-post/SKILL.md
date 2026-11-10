@@ -20,12 +20,16 @@ python3 $P --file /path/shot.png "Vault search result"         # text + image (u
 some-command | python3 $P -                                    # text from stdin
 python3 $P --json "…"                                          # print {"id","channel_id","url"}
 python3 $P --link-to <message_id> "…"                          # end with a link to an earlier post
+python3 $P --json --thread-name "Design: X" "…"                # start a forum post; prints thread_id
+python3 $P --thread <thread_id> "…"                            # post into that thread
 python3 $P --dry-run --file shot.png "caption"                 # preview, sends nothing
 ```
 
 - Over 2000 characters is split into several messages; attachments go on the last one.
 - Files ≤ 10 MB each. Mentions are disabled: a post never pings @everyone, roles or users.
 - Webhooks cannot send Discord replies; use `--link-to` to point back at an earlier message.
+- `--thread-name` needs a **Forum** channel webhook. On a text channel Discord refuses it; `post.py`
+  then posts to the channel and `--json` prints `"thread_id": null`.
 
 ## Rules — posting is public to that channel
 
@@ -57,8 +61,10 @@ and prints one JSON line:
 | 3 | `timeout` | No decision in time. Do not proceed. |
 | 4 | `error` | Token, permission or id problem. Do not proceed. |
 
-Every result except `error` carries `discussion`: all replies to the post, directly or through a
-reply chain, from anyone, oldest first (`id, author_id, author, text, reply_to`).
+Every result except `error` carries `discussion`, oldest first (`id, author_id, author, text,
+reply_to`). Pass the thread id as `--channel` for a forum post: there every message after the post
+counts, except the webhook's own. In a text channel only replies to the post (and their reply
+chains) count.
 
 - Only approvers decide (`~/.config/discord-post/approvers`, one Discord user id per line). Replies
   never decide; silence never approves; 👎 beats 🔁 beats 👍.
@@ -69,11 +75,13 @@ reply chain, from anyone, oldest first (`id, author_id, author, text, reply_to`)
 
 ## Setup (user does this; never paste secrets into chat)
 
-- **Webhook:** channel settings → Integrations → Webhooks → New → copy URL into
+- **Webhook:** use a **Forum** channel so each design gets its own post (a text channel works, without
+  threads). Channel settings → Integrations → Webhooks → New → copy URL into
   `~/.config/discord-post/webhook` (mode 600), or set `DISCORD_WEBHOOK_URL`.
 - **Bot (for waiting):** discord.com/developers/applications → New Application → Bot → Reset Token;
   enable **Message Content Intent** (to read reply text). Invite with scope `bot`, permissions
-  **View Channels + Read Message History** only (`permissions=66560`), and let it view the channel.
+  **View Channels + Read Message History** only (`permissions=66560`), and let it view the channel
+  (for a forum: the forum channel; its posts inherit that).
   Token into `~/.config/discord-post/bot-token` (mode 600), or `DISCORD_BOT_TOKEN`.
 - **Approvers:** Discord Developer Mode → right-click a person → Copy User ID → one per line in
   `~/.config/discord-post/approvers`, or `DISCORD_APPROVERS` (comma-separated). Tip: react to any
