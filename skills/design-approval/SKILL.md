@@ -63,7 +63,8 @@ Tell the developer the post is up, with its URL.
 ## 3. Wait
 
 ```bash
-python3 <discord>/wait_approval.py --channel <channel_id> --message <message_id> --timeout 8h
+python3 <discord>/wait_approval.py --channel <channel_id> --message <message_id> --timeout 8h \
+  --return-on-reply --seen <state seen, or 0>
 ```
 
 Run it in the background where the host allows it; otherwise in the foreground. To resume in a new
@@ -74,6 +75,7 @@ once.
 |---|---|
 | `approved` (0) | Step 5. Set state `approved`. |
 | `revise` (5) | Step 4. |
+| `reply` (6) | Tell the developer who replied and what they said (new entries only). Store the newest discussion `id` as state `seen`, start the wait again. A reply is never approval. |
 | `rejected` (1) | Set state `rejected`, tell the developer who stopped it and the discussion's gist. Stop. |
 | `timeout` (3) | Tell the developer; offer to wait again. Do nothing else. |
 | `error` (4) | Report the error. Do nothing else. |
