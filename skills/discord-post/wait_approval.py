@@ -2,15 +2,19 @@
 """Wait for an approver's decision on a Discord message and collect the discussion.
 
   wait_approval.py --channel <channel_id> --message <message_id> [--timeout 8h] [--interval 20s]
+                   [--return-on-reply [--seen <reply_id>]]
 
 Approvers react on the message; replies are discussion, never a decision:
 
   👍  approve   exit 0  {"status": "approved", "by": id, "discussion": [...]}
   👎  reject    exit 1  {"status": "rejected", "by": id, "discussion": [...]}
   🔁  revise    exit 5  {"status": "revise",   "by": id, "discussion": [...]}
+  (new reply)   exit 6  {"status": "reply",    "discussion": [...]}   only with --return-on-reply
   (no decision) exit 3  {"status": "timeout",  "discussion": [...]}
   (failure)     exit 4  {"status": "error",    "error": "..."}
 
+--return-on-reply also returns when a reply newer than --seen (a reply id) appears, so the
+caller can relay it and wait again with --seen <newest reply id>. A reply never decides.
 Look-alikes count: ✅ and skin-toned 👍 approve, ❌ and skin-toned 👎 reject, 🔄 and 🔃 revise.
 
 "discussion" is every message that replies to the posted message, directly or through
@@ -128,6 +132,9 @@ def main() -> None:
     ap.add_argument("--message", required=True)
     ap.add_argument("--timeout", type=duration, default=duration("8h"))
     ap.add_argument("--interval", type=duration, default=duration("20s"))
+    ap.add_argument("--return-on-reply", action="store_true",
+                    help="also return (exit 6) when a reply newer than --seen appears")
+    ap.add_argument("--seen", default="0", help="newest reply id already reported")
     args = ap.parse_args()
 
     token = os.environ.get("DISCORD_BOT_TOKEN", "").strip() or read(f"{CONF}/bot-token")
@@ -156,6 +163,10 @@ def main() -> None:
             if deciders:
                 done(code, status=status, by=deciders[0],
                      discussion=discussion(args.channel, args.message, token))
+        if args.return_on_reply:
+            thread = discussion(args.channel, args.message, token)
+            if any(int(m["id"]) > int(args.seen) for m in thread):
+                done(6, status="reply", discussion=thread)
         if time.monotonic() + args.interval > deadline:
             done(3, status="timeout", discussion=discussion(args.channel, args.message, token))
         time.sleep(args.interval)

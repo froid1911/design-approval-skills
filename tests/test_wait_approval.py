@@ -65,13 +65,13 @@ class WaitApprovalTest(unittest.TestCase):
     def tearDownClass(cls):
         cls.server.shutdown()
 
-    def run_waiter(self, scenario, message=POST, timeout="20s", token="t", approvers=BOSS):
+    def run_waiter(self, scenario, message=POST, timeout="20s", token="t", approvers=BOSS, extra=()):
         Fake.scenario = scenario
         env = {**os.environ, "DISCORD_API": self.api, "DISCORD_BOT_TOKEN": token,
                "DISCORD_APPROVERS": approvers, "HOME": "/nonexistent"}
         res = subprocess.run(
             [sys.executable, WAITER, "--channel", "5", "--message", message,
-             "--timeout", timeout, "--interval", "1s"],
+             "--timeout", timeout, "--interval", "1s", *extra],
             capture_output=True, text=True, env=env, timeout=30,
         )
         return res.returncode, json.loads(res.stdout.strip().splitlines()[-1])
@@ -129,6 +129,30 @@ class WaitApprovalTest(unittest.TestCase):
     def test_similar_emoji_from_non_approvers_never_decide(self):
         code, out = self.run_waiter({"reactions": {"🔄": [OTHER], "✅": [OTHER]}}, timeout="2s")
         self.assertEqual((code, out["status"]), (3, "timeout"))
+
+    def test_return_on_reply_wakes_on_a_new_reply(self):
+        code, out = self.run_waiter({
+            "messages": [msg("1001", OTHER, "simply remove the output", reply_to=POST)],
+        }, extra=["--return-on-reply"])
+        self.assertEqual((code, out["status"]), (6, "reply"))
+        self.assertEqual(out["discussion"][0]["text"], "simply remove the output")
+
+    def test_seen_skips_replies_already_reported(self):
+        first = msg("1001", OTHER, "first", reply_to=POST)
+        code, out = self.run_waiter({"messages": [first]}, timeout="2s",
+                                    extra=["--return-on-reply", "--seen", "1001"])
+        self.assertEqual((code, out["status"]), (3, "timeout"))
+        code, out = self.run_waiter({"messages": [first, msg("1002", BOSS, "second", reply_to="1001")]},
+                                    extra=["--return-on-reply", "--seen", "1001"])
+        self.assertEqual((code, out["status"]), (6, "reply"))
+        self.assertEqual([m["id"] for m in out["discussion"]], ["1001", "1002"])
+
+    def test_decision_beats_a_new_reply(self):
+        code, out = self.run_waiter({
+            "reactions": {"👍": [BOSS]},
+            "messages": [msg("1001", OTHER, "nit", reply_to=POST)],
+        }, extra=["--return-on-reply"])
+        self.assertEqual((code, out["status"]), (0, "approved"))
 
     def test_errors_fail_fast(self):
         code, out = self.run_waiter({}, message="999")
