@@ -1,0 +1,7 @@
+{
+  "name": "design-approval",
+  "description": "Post designs to Discord, wait for 👍/🔁/👎 with discussion, then one-shot approved designs into worktrees and pull requests (multi-repo).",
+  "version": "0.1.0",
+  "author": { "name": "froid1911" },
+  "license": "MIT"
+}

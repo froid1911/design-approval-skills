@@ -1,0 +1,11 @@
+{
+  "name": "design-approval-skills",
+  "owner": { "name": "froid1911" },
+  "plugins": [
+    {
+      "name": "design-approval",
+      "source": "./",
+      "description": "Discord design approval → worktree → pull request, for any coding agent."
+    }
+  ]
+}
