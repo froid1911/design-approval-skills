@@ -96,7 +96,8 @@ to the spec in the primary repo and commit it.
 
 ## 6. Worktrees, one per repo
 
-Per-repo config, committed in each repo at `.agents/approval.json`:
+Per-repo config at `<repo>/.agents/approval.json`, read from the repo's main checkout. Commit it to
+share it with the team, or keep it local (add `.agents/approval.json` to `.git/info/exclude`):
 
 ```json
 { "remote": "origin", "base": "main", "gates": ["bun run tsc", "bun run test"] }
@@ -111,12 +112,18 @@ git worktree add ../.worktrees/<repo>-<topic> -b feat/<topic> <remote>/<base>
 
 Follow each repo's own agent instructions (CLAUDE.md / AGENTS.md) inside its worktree.
 
+**Baseline before changing anything:** run the repo's `gates` once in the fresh worktree and record
+each result (for test gates, the names of failing tests). Repos often carry failures on `main`; those
+must not block the PR, and they must not hide new ones.
+
 ## 7. Implement (one shot)
 
 Use `subagent-driven-development` where the host has subagents, else `executing-plans`. Work repo
 by repo in plan order, each task in its repo's worktree, test-first, one commit per logical change.
-Then run that repo's `gates`. A failing gate: fix within the plan's scope. If it cannot pass, that
-repo gets **no PR** — report it (step 9).
+Then run that repo's `gates` again and compare with the baseline. A gate blocks only if it fails
+where the baseline passed, or fails tests the baseline did not. Fix new failures within the plan's
+scope; if they cannot be fixed, that repo gets **no PR** — report it (step 9). Failures already in
+the baseline are listed in the PR body as pre-existing, never silently ignored.
 
 ## 8. Pull requests, one per repo
 
